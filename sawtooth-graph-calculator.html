@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sawtooth Graph Calculator</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --text: #e6e9ef;
+    --muted: #9aa3b2;
+    --a1: #4da3ff;
+    --a2: #7fd1ff;
+    --b1: #ff9d4d;
+    --b2: #ffc98a;
+    --powerband: #3ddc84;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  h2 { font-size: 1.15rem; margin: 28px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .subtitle { color: var(--muted); margin-top: 0; }
+  .explainer {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 18px 0 28px;
+  }
+  .explainer ul { margin: 8px 0; padding-left: 20px; }
+  .explainer li { margin-bottom: 6px; }
+  .slots {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 760px) {
+    .slots { grid-template-columns: 1fr; }
+  }
+  .slot {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .slot h3 { margin: 0 0 12px; font-size: 1rem; }
+  .slot.slotA h3 { color: var(--a2); }
+  .slot.slotB h3 { color: var(--b2); }
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin: 10px 0 4px;
+  }
+  select, input[type="text"], input[type="number"] {
+    width: 100%;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 0.9rem;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ratios-box {
+    margin-top: 10px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    min-height: 20px;
+  }
+  .ratios-box b { color: var(--text); }
+  .error {
+    color: #ff6b6b;
+    font-size: 0.8rem;
+    margin-top: 8px;
+    min-height: 1em;
+  }
+  .chart-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 20px;
+  }
+  .chart-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .powerband-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .powerband-controls input {
+    width: 80px;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 5px 7px;
+    font-size: 0.85rem;
+  }
+  .unit-toggle {
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .unit-toggle:hover { border-color: var(--a1); }
+  svg { width: 100%; height: auto; display: block; }
+  .axis-label { fill: var(--muted); font-size: 11px; }
+  .grid-line { stroke: var(--border); stroke-width: 1; }
+  .tick-text { fill: var(--muted); font-size: 10px; }
+  .legend-text { fill: var(--text); font-size: 11px; }
+  footer { color: var(--muted); font-size: 0.78rem; margin-top: 30px; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>Sawtooth Graph Calculator</h1>
+<p class="subtitle">RPM vs Speed &mdash; compare two transmissions on one chart.</p>
+
+<div class="explainer">
+  <p><strong>TL;DR:</strong> In the automotive engineering and racing world, this is almost universally known as a <strong>&ldquo;Sawtooth Graph&rdquo;</strong> or <strong>&ldquo;Sawtooth Chart&rdquo;</strong> because of the jagged, teeth-like shape the lines make.</p>
+  <p>More formally, depending on the specific engineering context, you might also hear it referred to as:</p>
+  <ul>
+    <li><strong>A Gearing Chart</strong> &mdash; the most common functional name used by transmission builders and chassis shops when selecting rear-end ratios.</li>
+    <li><strong>A Shift Diagram</strong> &mdash; used by calibrators and tuners to visualize where a transmission will land after a shift.</li>
+    <li><strong>An RPM vs. Speed Graph</strong> &mdash; the literal, mathematical description of the axes.</li>
+  </ul>
+  <p>Engineers and race teams use these sawtooth graphs to visually verify that a specific transmission and rear-end combination will keep an engine inside its optimal powerband. If the &ldquo;teeth&rdquo; of the saw drop too low, it tells the builder that the gear spacing is too wide and the engine will bog down after a shift.</p>
+</div>
+
+<h2>Configure &amp; Compare</h2>
+<div class="slots">
+  <div class="slot slotA">
+    <h3>Transmission A</h3>
+    <label for="transA">Transmission</label>
+    <select id="transA"></select>
+    <div class="ratios-box" id="ratiosA">&mdash;</div>
+
+    <div class="row2">
+      <div>
+        <label for="rearA">Rear-end ratio</label>
+        <input type="number" id="rearA" step="0.01" value="3.73">
+      </div>
+      <div>
+        <label for="tireA">Tire code</label>
+        <input type="text" id="tireA" value="275/60R15">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label for="idleA">Idle RPM</label>
+        <input type="number" id="idleA" step="50" value="800">
+      </div>
+      <div>
+        <label for="shiftA">Shift/Redline RPM</label>
+        <input type="number" id="shiftA" step="50" value="6500">
+      </div>
+    </div>
+    <div class="error" id="errA"></div>
+  </div>
+
+  <div class="slot slotB">
+    <h3>Transmission B</h3>
+    <label for="transB">Transmission</label>
+    <select id="transB"></select>
+    <div class="ratios-box" id="ratiosB">&mdash;</div>
+
+    <div class="row2">
+      <div>
+        <label for="rearB">Rear-end ratio</label>
+        <input type="number" id="rearB" step="0.01" value="3.73">
+      </div>
+      <div>
+        <label for="tireB">Tire code</label>
+        <input type="text" id="tireB" value="275/60R15">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label for="idleB">Idle RPM</label>
+        <input type="number" id="idleB" step="50" value="800">
+      </div>
+      <div>
+        <label for="shiftB">Shift/Redline RPM</label>
+        <input type="number" id="shiftB" step="50" value="6500">
+      </div>
+    </div>
+    <div class="error" id="errB"></div>
+  </div>
+</div>
+
+<div class="chart-wrap">
+  <div class="chart-toolbar">
+    <div class="powerband-controls">
+      <label for="powerbandLow" style="margin:0;">Powerband (RPM):</label>
+      <input type="number" id="powerbandLow" step="100" value="3000">
+      <span>&ndash;</span>
+      <input type="number" id="powerbandHigh" step="100" value="5500">
+    </div>
+    <button class="unit-toggle" id="unitToggle">Show: MPH</button>
+  </div>
+  <svg id="chart" viewBox="0 0 900 480" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<footer>All calculations run locally in your browser. No network requests, no external libraries.</footer>
+
+<script>
+const TRANSMISSIONS = [
+  { name: "GM Turbo Hydramatic 400 (TH400)", type: "Automatic", era: "Classic", speeds: 3, gear_ratios: [2.48, 1.48, 1.00], torque_rating_lb_ft: "450 (Stock)", key_features: "Heavy-duty 3-speed used behind large big-block engines. Bulletproof strength, popular in high-horsepower drag builds." },
+  { name: "GM Turbo Hydramatic 350 (TH350)", type: "Automatic", era: "Classic", speeds: 3, gear_ratios: [2.52, 1.52, 1.00], torque_rating_lb_ft: "350 (Stock)", key_features: "Lighter and more compact than the TH400. Extremely common behind small-block V8s; highly versatile and robs less power than the TH400." },
+  { name: "Chrysler TorqueFlite 727", type: "Automatic", era: "Classic", speeds: 3, gear_ratios: [2.45, 1.45, 1.00], torque_rating_lb_ft: "450 (Stock)", key_features: "Mopar's equivalent to the TH400. Sat behind the 426 Hemi and 440 Six Pack and is considered one of the strongest factory automatics." },
+  { name: "Ford C6", type: "Automatic", era: "Classic", speeds: 3, gear_ratios: [2.46, 1.46, 1.00], torque_rating_lb_ft: "450 (Stock)", key_features: "Ford's heavy-duty 3-speed automatic used behind massive FE, 385-series big blocks, and the 351 Cleveland." },
+  { name: "GM Powerglide", type: "Automatic", era: "Classic", speeds: 2, gear_ratios: [1.76, 1.00], torque_rating_lb_ft: "300 (Stock)", key_features: "Two-speed automatic originally introduced in the 1950s. Extreme simplicity and strength make it a staple in dedicated drag racing." },
+  { name: "Muncie M20 (Wide Ratio)", type: "Manual", era: "Classic", speeds: 4, gear_ratios: [2.52, 1.88, 1.46, 1.00], torque_rating_lb_ft: "350 (Stock)", key_features: "The standard wide-ratio manual for GM muscle cars, designed for street cars with taller rear-end gears." },
+  { name: "Muncie M21 / M22 (Close Ratio)", type: "Manual", era: "Classic", speeds: 4, gear_ratios: [2.20, 1.64, 1.28, 1.00], torque_rating_lb_ft: "400 (Stock)", key_features: "The heavy-duty M22 ('Rock Crusher') is known for the whining noise of its straight-cut gears." },
+  { name: "Ford Toploader (Wide Ratio)", type: "Manual", era: "Classic", speeds: 4, gear_ratios: [2.78, 1.93, 1.36, 1.00], torque_rating_lb_ft: "450 (Stock)", key_features: "Named because the internal gears were loaded through the top of the case. Incredibly strong and used in cars like Mustangs and Fairlanes." },
+  { name: "Ford Toploader (Close Ratio)", type: "Manual", era: "Classic", speeds: 4, gear_ratios: [2.32, 1.69, 1.29, 1.00], torque_rating_lb_ft: "450 (Stock)", key_features: "Close-ratio variant of Ford's indestructible 4-speed, utilized behind the highest output Total Performance V8s." },
+  { name: "Chrysler A833 4-Speed", type: "Manual", era: "Classic", speeds: 4, gear_ratios: [2.65, 1.91, 1.39, 1.00], torque_rating_lb_ft: "450 (Stock)", key_features: "The go-to heavy-duty manual transmission for Plymouth and Dodge muscle cars, known for being virtually indestructible in factory form." },
+  { name: "GM 4L60E", type: "Automatic", era: "Modern", speeds: 4, gear_ratios: [3.06, 1.62, 1.00, 0.70], torque_rating_lb_ft: "360 (Stock)", key_features: "Modern, electronically controlled 4-speed that evolved from the 700R4. Features a deep first gear for acceleration." },
+  { name: "GM 4L80E", type: "Automatic", era: "Modern", speeds: 4, gear_ratios: [2.48, 1.48, 1.00, 0.75], torque_rating_lb_ft: "440 (Stock)", key_features: "Essentially an electronically controlled TH400 with an overdrive gear. Heavily favored for high-horsepower LS swaps." },
+  { name: "GM 6L80E", type: "Automatic", era: "Modern", speeds: 6, gear_ratios: [4.03, 2.36, 1.53, 1.15, 0.85, 0.67], torque_rating_lb_ft: "430 (Stock)", key_features: "A six-speed automatic that offers a steep first gear for acceleration and double overdrives for cruising." },
+  { name: "ZF 8HP Series (e.g., 8HP75)", type: "Automatic", era: "Modern", speeds: 8, gear_ratios: [4.71, 3.14, 2.11, 1.67, 1.28, 1.00, 0.84, 0.67], torque_rating_lb_ft: "553 (Stock)", key_features: "A modern 8-speed automatic adapted into classic cars for its lightning-fast shifts and excellent close-ratio gear spacing." },
+  { name: "Tremec T-56 Magnum", type: "Manual", era: "Modern", speeds: 6, gear_ratios: [2.66, 1.78, 1.30, 1.00, 0.80, 0.63], torque_rating_lb_ft: "700", key_features: "The most popular modern aftermarket manual swap. A six-speed capable of handling extreme torque, giving close-ratio acceleration and two overdrive gears." },
+  { name: "Tremec TKX", type: "Manual", era: "Modern", speeds: 5, gear_ratios: [2.87, 1.89, 1.28, 1.00, 0.68], torque_rating_lb_ft: "600", key_features: "A five-speed manual specifically designed to fit inside the narrow transmission tunnels of classic muscle cars without requiring floorboard modifications." },
+  { name: "Tremec TR6060", type: "Manual", era: "Modern", speeds: 6, gear_ratios: [2.66, 1.78, 1.30, 1.00, 0.74, 0.50], torque_rating_lb_ft: "600 (Stock)", key_features: "The heavy-duty factory OEM successor to the T-56. Features wider gears and improved synchronizers. Found natively in modern muscle like the Camaro SS, Challenger, and Shelby GT500." }
+];
+
+const TIRE_CODE_RE = /^(\d+)\s*\/\s*(\d+)\s*R\s*(\d+)$/i;
+let unit = "mph"; // "mph" | "kph"
+
+function populateSelect(sel) {
+  TRANSMISSIONS.forEach((t, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `${t.name} (${t.speeds}-spd, ${t.type})`;
+    sel.appendChild(opt);
+  });
+}
+populateSelect(document.getElementById("transA"));
+populateSelect(document.getElementById("transB"));
+document.getElementById("transB").selectedIndex = Math.min(1, TRANSMISSIONS.length - 1);
+
+function tireDiameterInches(code) {
+  const m = TIRE_CODE_RE.exec(code.trim());
+  if (!m) return null;
+  const widthMm = parseFloat(m[1]);
+  const aspectPct = parseFloat(m[2]);
+  const rimIn = parseFloat(m[3]);
+  if (!isFinite(widthMm) || !isFinite(aspectPct) || !isFinite(rimIn)) return null;
+  const sidewallIn = (widthMm * (aspectPct / 100)) / 25.4;
+  return rimIn + 2 * sidewallIn;
+}
+
+function mphAtRpm(rpm, gearRatio, rearRatio, tireDiaIn) {
+  return (rpm * tireDiaIn) / (gearRatio * rearRatio * 336);
+}
+
+function rpmAtMph(mph, gearRatio, rearRatio, tireDiaIn) {
+  return (mph * gearRatio * rearRatio * 336) / tireDiaIn;
+}
+
+function readSlot(suffix) {
+  const errEl = document.getElementById("err" + suffix);
+  errEl.textContent = "";
+
+  const transIdx = document.getElementById("trans" + suffix).value;
+  const trans = TRANSMISSIONS[transIdx];
+  const rear = parseFloat(document.getElementById("rear" + suffix).value);
+  const tireCode = document.getElementById("tire" + suffix).value;
+  const idle = parseFloat(document.getElementById("idle" + suffix).value);
+  const shift = parseFloat(document.getElementById("shift" + suffix).value);
+
+  const ratiosBox = document.getElementById("ratios" + suffix);
+  if (trans) {
+    ratiosBox.innerHTML = `<b>${trans.name}</b> &mdash; gears: ${trans.gear_ratios.join(", ")}<br>${trans.key_features}`;
+  }
+
+  const problems = [];
+  if (!trans) problems.push("select a transmission");
+  if (!isFinite(rear) || rear <= 0) problems.push("invalid rear-end ratio");
+  const tireDia = tireDiameterInches(tireCode);
+  if (tireDia === null) problems.push("invalid tire code (expected e.g. 275/60R15)");
+  if (!isFinite(idle) || !isFinite(shift) || idle < 0 || shift <= idle) problems.push("invalid idle/shift RPM");
+
+  if (problems.length) {
+    errEl.textContent = problems.join("; ");
+    return null;
+  }
+
+  return { trans, rear, tireDia, idle, shift };
+}
+
+function buildTeeth(slotData) {
+  const { trans, rear, tireDia, idle, shift } = slotData;
+  let prevEndSpeed = null;
+  return trans.gear_ratios.map((g, i) => {
+    const startRpm = prevEndSpeed === null ? idle : rpmAtMph(prevEndSpeed, g, rear, tireDia);
+    const startSpeed = prevEndSpeed === null ? mphAtRpm(idle, g, rear, tireDia) : prevEndSpeed;
+    const endSpeed = mphAtRpm(shift, g, rear, tireDia);
+    prevEndSpeed = endSpeed;
+    return {
+      gearIndex: i + 1,
+      ratio: g,
+      startSpeed, startRpm,
+      endSpeed, endRpm: shift
+    };
+  });
+}
+
+function toDisplaySpeed(mph) {
+  return unit === "kph" ? mph * 1.60934 : mph;
+}
+
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function renderChart(teethA, teethB, powerband) {
+  const svg = document.getElementById("chart");
+  svg.innerHTML = "";
+
+  const W = 900, H = 480;
+  const margin = { top: 20, right: 20, bottom: 50, left: 60 };
+  const plotW = W - margin.left - margin.right;
+  const plotH = H - margin.top - margin.bottom;
+
+  const allTeeth = [...(teethA || []), ...(teethB || [])];
+  if (!allTeeth.length) {
+    svg.appendChild(svgEl("text", { x: W / 2, y: H / 2, "text-anchor": "middle", class: "legend-text" }))
+      .textContent = "Fix the errors above to see the chart.";
+    return;
+  }
+
+  let maxRpm = 0, maxSpeed = 0;
+  allTeeth.forEach(t => {
+    maxRpm = Math.max(maxRpm, t.endRpm, t.startRpm);
+    maxSpeed = Math.max(maxSpeed, toDisplaySpeed(t.endSpeed), toDisplaySpeed(t.startSpeed));
+  });
+  maxRpm = Math.ceil(maxRpm / 500) * 500;
+  maxSpeed = Math.ceil(maxSpeed / 10) * 10 * 1.05;
+
+  const xScale = s => margin.left + (s / maxSpeed) * plotW;
+  const yScale = r => margin.top + plotH - (r / maxRpm) * plotH;
+
+  // grid + axes
+  const gridGroup = svgEl("g", {});
+  const rpmSteps = 6, speedSteps = 8;
+  for (let i = 0; i <= rpmSteps; i++) {
+    const rpm = (maxRpm / rpmSteps) * i;
+    const y = yScale(rpm);
+    gridGroup.appendChild(svgEl("line", { x1: margin.left, y1: y, x2: W - margin.right, y2: y, class: "grid-line" }));
+    const t = svgEl("text", { x: margin.left - 8, y: y + 3, "text-anchor": "end", class: "tick-text" });
+    t.textContent = Math.round(rpm);
+    gridGroup.appendChild(t);
+  }
+  for (let i = 0; i <= speedSteps; i++) {
+    const sp = (maxSpeed / speedSteps) * i;
+    const x = xScale(sp);
+    gridGroup.appendChild(svgEl("line", { x1: x, y1: margin.top, x2: x, y2: H - margin.bottom, class: "grid-line" }));
+    const t = svgEl("text", { x: x, y: H - margin.bottom + 16, "text-anchor": "middle", class: "tick-text" });
+    t.textContent = Math.round(sp);
+    gridGroup.appendChild(t);
+  }
+  svg.appendChild(gridGroup);
+
+  const yLabel = svgEl("text", { x: -(margin.top + plotH / 2), y: 16, transform: "rotate(-90)", "text-anchor": "middle", class: "axis-label" });
+  yLabel.textContent = "RPM";
+  svg.appendChild(yLabel);
+  const xLabel = svgEl("text", { x: margin.left + plotW / 2, y: H - 8, "text-anchor": "middle", class: "axis-label" });
+  xLabel.textContent = `Speed (${unit.toUpperCase()})`;
+  svg.appendChild(xLabel);
+
+  if (powerband && isFinite(powerband.low) && isFinite(powerband.high) && powerband.high > powerband.low) {
+    const bandLow = Math.max(powerband.low, 0);
+    const bandHigh = Math.min(powerband.high, maxRpm);
+    if (bandHigh > bandLow) {
+      const yTop = yScale(bandHigh);
+      const yBottom = yScale(bandLow);
+      svg.appendChild(svgEl("rect", {
+        x: margin.left, y: yTop, width: plotW, height: yBottom - yTop,
+        fill: getCss("--powerband"), "fill-opacity": "0.12",
+        stroke: getCss("--powerband"), "stroke-opacity": "0.4", "stroke-dasharray": "3 3"
+      }));
+      const bandLabel = svgEl("text", { x: margin.left + 6, y: yTop + 12, class: "legend-text", fill: getCss("--powerband") });
+      bandLabel.textContent = "Powerband";
+      svg.appendChild(bandLabel);
+    }
+  }
+
+  function drawTeeth(teeth, colorMain, colorAlt, labelPrefix) {
+    if (!teeth) return;
+    let prevX2 = null, prevY2 = null;
+    teeth.forEach((t, i) => {
+      const x1 = xScale(toDisplaySpeed(t.startSpeed));
+      const y1 = yScale(t.startRpm);
+      const x2 = xScale(toDisplaySpeed(t.endSpeed));
+      const y2 = yScale(t.endRpm);
+      const color = i % 2 === 0 ? colorMain : colorAlt;
+
+      if (prevX2 !== null) {
+        svg.appendChild(svgEl("line", {
+          x1: prevX2, y1: prevY2, x2: x1, y2: y1,
+          stroke: color, "stroke-width": 1.5, "stroke-dasharray": "4 3", fill: "none"
+        }));
+      }
+
+      svg.appendChild(svgEl("line", { x1, y1, x2, y2, stroke: color, "stroke-width": 2.5, fill: "none" }));
+      svg.appendChild(svgEl("circle", { cx: x2, cy: y2, r: 3, fill: color }));
+
+      prevX2 = x2; prevY2 = y2;
+    });
+  }
+
+  drawTeeth(teethA, getCss("--a1"), getCss("--a2"), "A");
+  drawTeeth(teethB, getCss("--b1"), getCss("--b2"), "B");
+
+  // legend
+  let legendY = margin.top + 4;
+  if (teethA && teethA.length) {
+    svg.appendChild(swatch(margin.left + plotW - 160, legendY, getCss("--a1")));
+    const t = svgEl("text", { x: margin.left + plotW - 148, y: legendY + 9, class: "legend-text" });
+    t.textContent = "A: " + document.getElementById("transA").selectedOptions[0].textContent.split(" (")[0];
+    svg.appendChild(t);
+    legendY += 18;
+  }
+  if (teethB && teethB.length) {
+    svg.appendChild(swatch(margin.left + plotW - 160, legendY, getCss("--b1")));
+    const t = svgEl("text", { x: margin.left + plotW - 148, y: legendY + 9, class: "legend-text" });
+    t.textContent = "B: " + document.getElementById("transB").selectedOptions[0].textContent.split(" (")[0];
+    svg.appendChild(t);
+  }
+}
+
+function swatch(x, y, color) {
+  return svgEl("rect", { x, y: y - 8, width: 10, height: 10, fill: color });
+}
+
+function getCss(varName) {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+
+function recalcAndRender() {
+  const dataA = readSlot("A");
+  const dataB = readSlot("B");
+  const teethA = dataA ? buildTeeth(dataA) : null;
+  const teethB = dataB ? buildTeeth(dataB) : null;
+  const powerband = {
+    low: parseFloat(document.getElementById("powerbandLow").value),
+    high: parseFloat(document.getElementById("powerbandHigh").value)
+  };
+  renderChart(teethA, teethB, powerband);
+}
+
+["A", "B"].forEach(suffix => {
+  ["trans", "rear", "tire", "idle", "shift"].forEach(field => {
+    document.getElementById(field + suffix).addEventListener("input", recalcAndRender);
+    document.getElementById(field + suffix).addEventListener("change", recalcAndRender);
+  });
+});
+
+["powerbandLow", "powerbandHigh"].forEach(id => {
+  document.getElementById(id).addEventListener("input", recalcAndRender);
+  document.getElementById(id).addEventListener("change", recalcAndRender);
+});
+
+document.getElementById("unitToggle").addEventListener("click", () => {
+  unit = unit === "mph" ? "kph" : "mph";
+  document.getElementById("unitToggle").textContent = "Show: " + unit.toUpperCase();
+  recalcAndRender();
+});
+
+document.getElementById("transA").selectedIndex = 0;
+recalcAndRender();
+</script>
+
+</body>
+</html>
