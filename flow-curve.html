@@ -3,13 +3,11 @@ layout: default
 title: FlowCurve
 wide: true
 category: motorsports
+description: Paste your MAF calibration data (Voltage vs Airflow) to smooth curves using advanced algorithms (Whittaker-Eilers) or interpolate strictly (PCHIP).
+tags: [maf, calibration, smoothing, interpolation]
 ---
 <style>
     :root {
-        --panel: #1c1c1c;
-        --border: #434343;
-        --text: #f0e7d5;
-        --muted: #b6b6b6;
         --primary: var(--a1);
         --primary-hover: var(--a2);
     }
@@ -121,10 +119,7 @@ category: motorsports
 
 {% include back-to-index.html %}
 
-<div class="card full-width" style="margin-bottom: 20px; max-width: 1200px; margin-left: auto; margin-right: auto;">
-    <h1>FlowCurve</h1>
-    <p style="color: var(--muted);">Paste your MAF calibration data (Voltage vs Airflow) to smooth curves using advanced algorithms (Whittaker-Eilers) or interpolate strictly (PCHIP).</p>
-</div>
+{% include page-header.html %}
 
 <div class="container">
 

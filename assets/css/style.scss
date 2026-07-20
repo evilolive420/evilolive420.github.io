@@ -8,8 +8,33 @@
   --b1: #ff9d4d;
   --b2: #ffc98a;
   --powerband: #3ddc84;
+  --panel: #1c1c1c;
+  --border: #434343;
+  --text: #f0e7d5;
+  --muted: #b6b6b6;
 }
 
 .wide .wrapper,
 .wide header nav,
 .wide section { max-width: 1100px; }
+
+.subtitle { color: var(--muted); margin-top: 0; }
+
+.tags {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag {
+  display: inline-block;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}

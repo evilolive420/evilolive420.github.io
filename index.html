@@ -38,6 +38,13 @@ title: Motorsports Tools
       <li>
         <a href="{{ tool.url | relative_url }}">{{ tool.title }}</a>
         <p>{{ tool.description }}</p>
+        {% if tool.tags %}
+        <ul class="tags">
+          {% for tag in tool.tags %}
+          <li class="tag">{{ tag }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
       </li>
     {% endfor %}
   </ul>
