@@ -1,0 +1,726 @@
+---
+layout: default
+title: LineWizard
+wide: true
+---
+<style>
+    :root {
+        --panel: #1c1c1c;
+        --border: #434343;
+        --text: #f0e7d5;
+        --muted: #b6b6b6;
+        --primary: var(--a1);
+        --primary-hover: var(--a2);
+    }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 20px;
+    }
+    .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .full-width { grid-column: 1 / -1; }
+
+    label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        font-size: 0.9em;
+    }
+    textarea {
+        width: 100%;
+        height: 300px;
+        background: #0d0f14;
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 4px;
+        padding: 10px;
+        font-family: monospace;
+        font-size: 13px;
+        resize: vertical;
+        box-sizing: border-box;
+    }
+    input[type="text"], input[type="number"], select {
+        width: 100%;
+        background: #0d0f14;
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        box-sizing: border-box;
+    }
+    .radio-group {
+        margin-bottom: 15px;
+    }
+    .radio-group label {
+        display: inline-flex;
+        align-items: center;
+        font-weight: normal;
+        margin-right: 15px;
+        cursor: pointer;
+    }
+    .radio-group input { margin-right: 5px; }
+
+    button {
+        background-color: var(--primary);
+        color: #0d0f14;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        font-size: 1em;
+        transition: background 0.2s;
+    }
+    button:hover { background-color: var(--primary-hover); }
+    button.secondary {
+        background-color: var(--border);
+        color: var(--text);
+        margin-top: 10px;
+    }
+    button.secondary:hover { background-color: var(--muted); }
+
+    .chart-container {
+        position: relative;
+        height: 500px;
+        width: 100%;
+    }
+
+    .params-box {
+        background: #0d0f14;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        border: 1px solid var(--border);
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        font-weight: normal;
+        margin-bottom: 15px;
+        cursor: pointer;
+    }
+    .checkbox-label input { margin-right: 8px; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .container { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="card full-width" style="margin-bottom: 20px; max-width: 1200px; margin-left: auto; margin-right: auto;">
+    <h1>LineWizard</h1>
+    <p style="color: var(--muted);">Paste your MAF calibration data (Voltage vs Airflow) to smooth curves using advanced algorithms (Whittaker-Eilers) or interpolate strictly (PCHIP).</p>
+</div>
+
+<div class="container">
+
+    <!-- Sidebar: Input & Controls -->
+    <div class="sidebar">
+        <div class="card">
+            <h2>1. Input Data</h2>
+
+            <label for="xUnit">Input Type (X-Axis)</label>
+            <select id="xUnit" style="margin-bottom: 15px;">
+                <option value="Voltage (V)">Voltage (V)</option>
+                <option value="Frequency (Hz)">Frequency (Hz)</option>
+                <option value="Raw / Generic">Raw / Generic</option>
+            </select>
+
+            <label id="inputLabel" for="inputData">Paste Data (Voltage, Airflow)</label>
+            <textarea id="inputData" placeholder="0.5    2.1&#10;0.6    2.4&#10;0.7    2.8&#10;..."></textarea>
+
+            <label for="separator">Column Separator</label>
+            <select id="separator">
+                <option value="auto">Auto-detect</option>
+                <option value="tab">Tab</option>
+                <option value="comma">Comma (,)</option>
+                <option value="space">Space</option>
+            </select>
+        </div>
+
+        <div class="card">
+            <h2>2. Configuration</h2>
+
+            <label>Method</label>
+            <div class="radio-group">
+                <label><input type="radio" name="method" value="whittaker" checked> Whittaker-Eilers (Smoothing)</label><br>
+                <label><input type="radio" name="method" value="pchip"> PCHIP (Interpolation)</label>
+            </div>
+
+            <div id="whittakerParams" class="params-box">
+                <label for="lambda" title="Controls smoothness. Higher = Smoother (Stiffer).">Lambda (Smoothing Factor)</label>
+                <input type="number" id="lambda" value="1000" step="100">
+                <div style="font-size: 0.8em; color: var(--muted); margin-bottom: 10px;">Higher value = smoother curve. Try 100, 1000, 10000.</div>
+
+                <label class="checkbox-label" title="Smooths in the logarithmic domain. Guarantees positive output. Requires all input Airflow > 0.">
+                    <input type="checkbox" id="logSpace"> Log-Space Smoothing
+                </label>
+            </div>
+
+            <div id="pchipParams" class="params-box" style="display: none;">
+                <label>Output Points</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="pchipMode" value="same" checked> Same as input (no resampling)</label><br>
+                    <label><input type="radio" name="pchipMode" value="custom"> Custom X grid</label>
+                </div>
+                <div id="pchipGridBox" style="display: none;">
+                    <label for="pchipGrid">Target X breakpoints</label>
+                    <textarea id="pchipGrid" style="height: 100px;" placeholder="0.5, 1.0, 1.5, 2.0, ..."></textarea>
+                    <div style="font-size: 0.8em; color: var(--muted); margin-top: 6px;">Comma, space, or newline separated. Values outside the input range are clamped to the nearest endpoint (no extrapolation).</div>
+                </div>
+            </div>
+
+            <label class="checkbox-label" title="Force the curve to be strictly non-decreasing.">
+                <input type="checkbox" id="monotonic"> Enforce Monotonicity (Pre-process with PAVA)
+            </label>
+
+            <button id="processBtn">Process Data</button>
+        </div>
+    </div>
+
+    <!-- Main: Output -->
+    <div class="main-content">
+        <div class="card">
+            <h2>3. Visualization</h2>
+            <div class="chart-container">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>4. Result</h2>
+            <label>Smoothed Data (Copy this back to your tune)</label>
+            <textarea id="outputData" readonly></textarea>
+            <button id="copyBtn" class="secondary">Copy to Clipboard</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ '/assets/js/chart.umd.min.js' | relative_url }}"></script>
+<script>
+    // --- MATH LIBRARIES ---
+
+    // Helper: Create identity matrix
+    function eye(n) {
+        const res = [];
+        for (let i = 0; i < n; i++) {
+            const row = new Array(n).fill(0);
+            row[i] = 1;
+            res.push(row);
+        }
+        return res;
+    }
+
+    // Helper: Matrix multiplication
+    function matMul(A, B) {
+        const rA = A.length;
+        const cA = A[0].length;
+        const rB = B.length;
+        const cB = B[0].length;
+        if (cA !== rB) throw new Error("Matrix dimensions mismatch");
+        const C = [];
+        for (let i = 0; i < rA; i++) {
+            const row = new Array(cB).fill(0);
+            for (let j = 0; j < cB; j++) {
+                for (let k = 0; k < cA; k++) {
+                    row[j] += A[i][k] * B[k][j];
+                }
+            }
+            C.push(row);
+        }
+        return C;
+    }
+
+    // Helper: Matrix Transpose
+    function transpose(A) {
+        const r = A.length;
+        const c = A[0].length;
+        const T = [];
+        for (let i = 0; i < c; i++) {
+            const row = new Array(r);
+            for (let j = 0; j < r; j++) {
+                row[j] = A[j][i];
+            }
+            T.push(row);
+        }
+        return T;
+    }
+
+    // Helper: Matrix + Matrix
+    function matAdd(A, B) {
+        const r = A.length;
+        const c = A[0].length;
+        const C = [];
+        for (let i = 0; i < r; i++) {
+            const row = [];
+            for (let j = 0; j < c; j++) {
+                row.push(A[i][j] + B[i][j]);
+            }
+            C.push(row);
+        }
+        return C;
+    }
+
+    // Helper: Scalar * Matrix
+    function scalarMul(s, A) {
+        return A.map(row => row.map(val => val * s));
+    }
+
+    // Gaussian Elimination Solver for Ax = b
+    function solve(A, b) {
+        const n = A.length;
+        const M = A.map(row => [...row]);
+        const x = [...b];
+
+        for (let i = 0; i < n; i++) {
+            let maxRow = i;
+            for (let k = i + 1; k < n; k++) {
+                if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) {
+                    maxRow = k;
+                }
+            }
+
+            [M[i], M[maxRow]] = [M[maxRow], M[i]];
+            [x[i], x[maxRow]] = [x[maxRow], x[i]];
+
+            const pivot = M[i][i];
+            if (Math.abs(pivot) < 1e-10) continue;
+
+            for (let j = i + 1; j < n; j++) {
+                const factor = M[j][i] / pivot;
+                x[j] -= factor * x[i];
+                for (let k = i; k < n; k++) {
+                    M[j][k] -= factor * M[i][k];
+                }
+            }
+        }
+
+        const res = new Array(n).fill(0);
+        for (let i = n - 1; i >= 0; i--) {
+            let sum = 0;
+            for (let j = i + 1; j < n; j++) {
+                sum += M[i][j] * res[j];
+            }
+            res[i] = (x[i] - sum) / M[i][i];
+        }
+        return res;
+    }
+
+    // Whittaker-Eilers Smoother
+    function whittakerEilers(y, lambda) {
+        const n = y.length;
+        if (n < 3) return [...y];
+
+        const D = [];
+        for (let i = 0; i < n - 2; i++) {
+            const row = new Array(n).fill(0);
+            row[i] = 1;
+            row[i+1] = -2;
+            row[i+2] = 1;
+            D.push(row);
+        }
+
+        const Dt = transpose(D);
+        const DtD = matMul(Dt, D);
+        const I = eye(n);
+        const A = matAdd(I, scalarMul(lambda, DtD));
+
+        return solve(A, y);
+    }
+
+    // Isotonic Regression (Pool Adjacent Violators Algorithm)
+    function isotonicRegression(y) {
+        const n = y.length;
+        const stack = [];
+
+        for (let i = 0; i < n; i++) {
+            let current = { val: y[i], weight: 1 };
+            while (stack.length > 0 && stack[stack.length - 1].val > current.val) {
+                const prev = stack.pop();
+                const totalWeight = prev.weight + current.weight;
+                const weightedSum = prev.val * prev.weight + current.val * current.weight;
+                current = { val: weightedSum / totalWeight, weight: totalWeight };
+            }
+            stack.push(current);
+        }
+
+        const out = [];
+        for (const block of stack) {
+            for (let k = 0; k < block.weight; k++) {
+                out.push(block.val);
+            }
+        }
+        return out;
+    }
+
+    // PCHIP Interpolation Logic
+    function pchipInterpolate(x, y, x_eval) {
+        const n = x.length;
+        const h = [];
+        const delta = [];
+
+        for (let i = 0; i < n - 1; i++) {
+            h[i] = x[i+1] - x[i];
+            delta[i] = (y[i+1] - y[i]) / h[i];
+        }
+
+        const d = new Array(n).fill(0);
+        function pchip_end(h1, h2, del1, del2) {
+            const d = ((2*h1 + h2)*del1 - h1*del2) / (h1 + h2);
+            if (d * del1 < 0) return 0;
+            if ((del1 * del2 < 0) && (Math.abs(d) > Math.abs(3*del1))) return 3*del1;
+            return d;
+        }
+
+        d[0] = pchip_end(h[0], h[1], delta[0], delta[1]);
+        d[n-1] = pchip_end(h[n-2], h[n-3], delta[n-2], delta[n-3]);
+
+        for (let i = 1; i < n - 1; i++) {
+            if (delta[i-1] * delta[i] > 0) {
+                const w1 = 2 * h[i] + h[i-1];
+                const w2 = h[i] + 2 * h[i-1];
+                d[i] = (w1 + w2) / (w1 / delta[i-1] + w2 / delta[i]);
+            } else {
+                d[i] = 0;
+            }
+        }
+
+        // Find segment
+        let i = 0;
+        if (x_eval >= x[n-1]) i = n - 2;
+        else if (x_eval <= x[0]) i = 0;
+        else {
+            // Binary search could be better but linear is fine for <1000 pts
+            for (let j = 0; j < n - 1; j++) {
+                if (x_eval >= x[j] && x_eval < x[j+1]) {
+                    i = j;
+                    break;
+                }
+            }
+        }
+
+        const t = (x_eval - x[i]) / h[i];
+        const t2 = t*t;
+        const t3 = t*t*t;
+
+        const h00 = 2*t3 - 3*t2 + 1;
+        const h10 = t3 - 2*t2 + t;
+        const h01 = -2*t3 + 3*t2;
+        const h11 = t3 - t2;
+
+        const val = h00*y[i] + h10*h[i]*d[i] + h01*y[i+1] + h11*h[i]*d[i+1];
+        return val;
+    }
+
+
+    // --- UI LOGIC ---
+
+    const inputDataEl = document.getElementById('inputData');
+    const outputDataEl = document.getElementById('outputData');
+    const processBtn = document.getElementById('processBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const methodRadios = document.getElementsByName('method');
+    const whittakerParams = document.getElementById('whittakerParams');
+    const lambdaInput = document.getElementById('lambda');
+    const logSpaceCheck = document.getElementById('logSpace');
+    const monotonicCheck = document.getElementById('monotonic');
+    const separatorSel = document.getElementById('separator');
+    const xUnitSel = document.getElementById('xUnit');
+    const inputLabel = document.getElementById('inputLabel');
+    const pchipParams = document.getElementById('pchipParams');
+    const pchipModeRadios = document.getElementsByName('pchipMode');
+    const pchipGridBox = document.getElementById('pchipGridBox');
+    const pchipGridEl = document.getElementById('pchipGrid');
+
+    let chartInstance = null;
+
+    function getCss(varName) {
+        return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    }
+
+    // Chart.js defaults assume a light background; point them at the dark theme.
+    Chart.defaults.color = '#b6b6b6';
+    Chart.defaults.borderColor = '#434343';
+
+    // Toggle params visibility & Update Labels
+    function updateUI() {
+        let method = 'whittaker';
+        for (const r of methodRadios) { if (r.checked) method = r.value; }
+
+        whittakerParams.style.display = method === 'whittaker' ? 'block' : 'none';
+        pchipParams.style.display = method === 'pchip' ? 'block' : 'none';
+
+        let pchipMode = 'same';
+        for (const r of pchipModeRadios) { if (r.checked) pchipMode = r.value; }
+        pchipGridBox.style.display = (method === 'pchip' && pchipMode === 'custom') ? 'block' : 'none';
+
+        // Update labels based on unit selection
+        const unit = xUnitSel.value;
+        let unitShort;
+        if (unit.includes("Voltage")) unitShort = "Voltage";
+        else if (unit.includes("Frequency")) unitShort = "Frequency";
+        else unitShort = "Generic";
+
+        inputLabel.textContent = `Paste Data (${unitShort}, Airflow)`;
+
+        // Update Chart Axis Label if chart exists
+        if (chartInstance) {
+            chartInstance.options.scales.x.title.text = unit;
+            chartInstance.update();
+        }
+    }
+
+    methodRadios.forEach(r => r.addEventListener('change', updateUI));
+    pchipModeRadios.forEach(r => r.addEventListener('change', updateUI));
+    xUnitSel.addEventListener('change', updateUI);
+    updateUI(); // Init
+
+    function parseData(text) {
+        const lines = text.trim().split(/\r?\n/);
+        const data = [];
+
+        let sep = separatorSel.value;
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+
+            let parts;
+            if (sep === 'auto') {
+                if (line.includes('\t')) parts = line.split('\t');
+                else if (line.includes(',')) parts = line.split(',');
+                else parts = line.split(/\s+/);
+            } else if (sep === 'tab') {
+                parts = line.split('\t');
+            } else if (sep === 'comma') {
+                parts = line.split(',');
+            } else {
+                parts = line.split(/\s+/);
+            }
+
+            // Filter empty parts
+            parts = parts.filter(p => p.trim() !== '');
+
+            if (parts.length >= 2) {
+                const x = parseFloat(parts[0]);
+                const y = parseFloat(parts[1]);
+                if (!isNaN(x) && !isNaN(y)) {
+                    data.push({x, y});
+                }
+            }
+        }
+
+        // Sort by X
+        data.sort((a, b) => a.x - b.x);
+
+        // Handle duplicates (average Y)
+        const uniqueData = [];
+        if (data.length > 0) {
+            let currentX = data[0].x;
+            let sumY = data[0].y;
+            let count = 1;
+
+            for (let i = 1; i < data.length; i++) {
+                if (Math.abs(data[i].x - currentX) < 1e-9) {
+                    sumY += data[i].y;
+                    count++;
+                } else {
+                    uniqueData.push({x: currentX, y: sumY / count});
+                    currentX = data[i].x;
+                    sumY = data[i].y;
+                    count = 1;
+                }
+            }
+            uniqueData.push({x: currentX, y: sumY / count});
+        }
+
+        return {
+            x: uniqueData.map(p => p.x),
+            y: uniqueData.map(p => p.y)
+        };
+    }
+
+    // Parses a freeform list of numbers (comma, tab, space, or newline separated)
+    // used for the PCHIP custom resampling grid.
+    function parseNumberGrid(text) {
+        const nums = text
+            .split(/[\s,]+/)
+            .map(s => s.trim())
+            .filter(s => s !== '')
+            .map(parseFloat)
+            .filter(n => !isNaN(n));
+        nums.sort((a, b) => a - b);
+        return nums;
+    }
+
+    processBtn.addEventListener('click', () => {
+        const raw = parseData(inputDataEl.value);
+        if (raw.x.length === 0) {
+            alert("No valid data found. Please paste 2 columns of numbers.");
+            return;
+        }
+
+        let x = raw.x;
+        let y = raw.y;
+        let processedY = [];
+        let method = 'whittaker';
+        for (const r of methodRadios) { if (r.checked) method = r.value; }
+
+        if (method === 'pchip' && x.length < 3) {
+            alert("PCHIP requires at least 3 data points.");
+            return;
+        }
+
+        const useLogSpace = (method === 'whittaker' && logSpaceCheck.checked);
+
+        // Pre-Validation for Log-Space
+        let epsilon = 0;
+        if (useLogSpace) {
+            const minVal = Math.min(...y);
+            if (minVal <= 0) {
+                // Shift data to handle zeros/negatives in log domain
+                // We add a small epsilon relative to the data range, or a fixed small floor.
+                // 1e-4 is usually sufficient for airflow grams/sec
+                epsilon = 1e-4 - minVal;
+            }
+            // Transform to Log Domain (y' = log(y + epsilon))
+            y = y.map(v => Math.log(v + epsilon));
+        }
+
+        // 1. Monotonicity Pre-process
+        if (monotonicCheck.checked) {
+            y = isotonicRegression(y);
+        }
+
+        // 2. Algorithm
+        let outX = x;
+        if (method === 'whittaker') {
+            const lambda = parseFloat(lambdaInput.value) || 1000;
+            processedY = whittakerEilers(y, lambda);
+        } else {
+            // PCHIP: by default, evaluating at the original x points is a no-op
+            // (P(x_i) = y_i exactly). Resampling onto a custom grid is what
+            // actually makes PCHIP useful here.
+            let pchipMode = 'same';
+            for (const r of pchipModeRadios) { if (r.checked) pchipMode = r.value; }
+
+            if (pchipMode === 'custom' && pchipGridEl.value.trim() !== '') {
+                const xMin = x[0], xMax = x[x.length - 1];
+                const grid = parseNumberGrid(pchipGridEl.value)
+                    .map(v => Math.min(Math.max(v, xMin), xMax));
+                if (grid.length === 0) {
+                    alert("No valid breakpoints found in the custom X grid.");
+                    return;
+                }
+                outX = grid;
+            }
+
+            processedY = outX.map(xe => pchipInterpolate(x, y, xe));
+        }
+
+        // Post-Process: Transform back if Log-Space
+        if (useLogSpace) {
+            processedY = processedY.map(v => Math.exp(v) - epsilon);
+            // Safety clip to 0 in case epsilon subtraction leaves tiny negative noise
+            processedY = processedY.map(v => Math.max(0, v));
+        } else {
+            // Standard Safety: Clip negative values to 0
+            processedY = processedY.map(v => Math.max(0, v));
+        }
+
+        // 3. Output Text
+        let outStr = "";
+        for (let i = 0; i < outX.length; i++) {
+            // Format to reasonable decimals
+            outStr += `${outX[i]}\t${Number(processedY[i].toFixed(4))}\n`;
+        }
+        outputDataEl.value = outStr;
+
+        // 4. Update Chart
+        renderChart(x, raw.y, outX, processedY);
+    });
+
+    function renderChart(originalX, originalY, smoothedX, smoothedY) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    {
+                        label: 'Original Data',
+                        data: originalX.map((v, i) => ({x: v, y: originalY[i]})),
+                        borderColor: '#94a3b8',
+                        backgroundColor: '#94a3b8',
+                        showLine: false,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Smoothed Curve',
+                        data: smoothedX.map((v, i) => ({x: v, y: smoothedY[i]})),
+                        borderColor: getCss('--a1'),
+                        backgroundColor: getCss('--a1'),
+                        showLine: true,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                        tension: 0 // Straight lines between points in the viz, since we output discrete points
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: { display: true, text: xUnitSel.value, color: getCss('--text') },
+                        ticks: { color: getCss('--muted') },
+                        grid: { color: getCss('--border') }
+                    },
+                    y: {
+                        title: { display: true, text: 'Airflow', color: getCss('--text') },
+                        ticks: { color: getCss('--muted') },
+                        grid: { color: getCss('--border') }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: getCss('--text') } },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+    }
+
+    copyBtn.addEventListener('click', () => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(outputDataEl.value).then(() => {
+                const originalText = copyBtn.innerText;
+                copyBtn.innerText = "Copied!";
+                setTimeout(() => copyBtn.innerText = originalText, 2000);
+            });
+        } else {
+            outputDataEl.select();
+            document.execCommand('copy'); // Fallback for browsers without the Clipboard API
+        }
+    });
+
+</script>
